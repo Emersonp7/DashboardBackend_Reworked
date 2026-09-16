@@ -22,4 +22,5 @@ public class HackerNewsItem {
     String title;
     String type;
     String url;
+    String text;
 }

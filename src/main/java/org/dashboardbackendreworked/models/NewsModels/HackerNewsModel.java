@@ -15,6 +15,7 @@ public class HackerNewsModel {
     private String title;
     private int id;
     private String url;
+    private String text;
 
     @Override
     public String toString() {

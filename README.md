@@ -15,34 +15,64 @@ This rework's goal is a **more structured backend**: typed models for every exte
 
 ```
 src/main/java/org/dashboardbackendreworked/
-├── Application.java        # Spring Boot entry point
-├── models/                 # Data models (POJOs), grouped per integration
-│   ├── SpotifyModels/
-│   ├── GoogleCalendarModels/
-│   └── NewsModels/
-├── service/                 # Business logic layer, one service per integration
-│   ├── SpotifyService.java
-│   ├── GoogleCalendarService.java
-│   └── NewsService.java
-└── routers/                 # REST controllers (endpoint definitions) — mirrors the
-                              # original FastAPI routers; not yet implemented
+├── Application.java         # Spring Boot entry point
+├── configs/
+│   └── CorsConfig.java       # CORS setup for the frontend dev server
+├── models/                   # Data models (POJOs), grouped per integration
+│   ├── SpotifyModels/         # TrackModel, ArtistsModel, DeviceModel, SpotifyCredentialsModel
+│   ├── GoogleCalendarModels/  # EventModel
+│   └── NewsModels/            # HackerNewsModel, HackerNewsItem, TelemundoModel
+├── service/                  # Business logic layer, one (sub)package per integration
+│   ├── SpotifyServices/       # SpotifyAuthService, SpotifyService, SpotifyCredentialStore
+│   ├── GoogleCalendarServices/# GoogleCalendarAuthService, GoogleCalendarService
+│   └── NewsServices/          # HackerNewsService, TelemundoNewsService
+├── routers/                  # REST controllers, one (sub)package per integration
+│   ├── SpotifyRouters/        # SpotifyRouter
+│   ├── GoogleCalendarRouters/ # GoogleCalendarRouter
+│   └── NewsRouters/           # HackerNewsRouter, TelemundoNewsRouter
+└── utils/
+    └── HttpResponseMethods.java  # Shared HTTP fetch/JSON helpers used by the News services
 ```
 
-`models/` and `service/` are subdivided per external integration (e.g. `SpotifyModels`) to keep each source's data shapes and logic isolated, matching the pattern already used for Spotify.
+`models/`, `service/`, and `routers/` are all subdivided per external integration (e.g. `SpotifyModels`, `SpotifyServices`, `SpotifyRouters`) to keep each source's data shapes, logic, and endpoints isolated.
 
 ## Current state
 
-Each service (`SpotifyService`, `GoogleCalendarService`, `NewsService`) implements `CommandLineRunner` and currently exercises its own logic directly on application startup for local testing/iteration — none of them are wired to HTTP endpoints yet. `routers/` is scaffolded but empty; adding controllers there (returning the typed models from each service) is the next step toward parity with the original FastAPI backend.
+All three integrations are wired to HTTP endpoints via Spring `@RestController` routers under `/api`.
 
-### Integrations
+### API endpoints
 
-- **Spotify** (`SpotifyService`) — OAuth2 authorization code flow (with refresh), currently-playing track lookup. Credentials are cached to disk (`src/main/resources/Credentials/cached.json`) and refreshed automatically when expired.
-- **Google Calendar** (`GoogleCalendarService`) — fetches upcoming calendar events (`EventModel`).
-- **News** (`NewsService`) — aggregates from multiple sources (Hacker News API, Telemundo) into per-source models (`HackerNewsModel`, `TelemundoModel`).
+**Spotify** — `/api/spotify` (`SpotifyRouter`)
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/health` | Liveness check |
+| GET | `/authorize` | Returns the Spotify OAuth authorization URL |
+| GET | `/callback?code=` | Exchanges an auth code for tokens and persists them |
+| POST | `/skip` | Skips to the next track |
+| GET | `/current-track` | Returns the currently playing `TrackModel` |
+| GET | `/queue` | Returns the upcoming queue as `List<TrackModel>` |
+
+Auth uses the OAuth2 authorization code flow (with refresh); credentials are cached to disk (`src/main/resources/Credentials/cached.json`) via `SpotifyCredentialStore` and refreshed automatically when expired.
+
+**Google Calendar** — `/api/google` (`GoogleCalendarRouter`)
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/events?limit=` | Upcoming events from the primary calendar (`limit` optional, defaults to 10) |
+| GET | `/events/{date}` | Events on a specific `YYYY-MM-DD` date |
+
+Both return `List<EventModel>`. Auth uses Google's installed-app OAuth flow (`GoogleCalendarAuthService`), with tokens stored under `tokens/`.
+
+**News** — `/api/news/...`
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/api/news/hacker-news/recent-news?limit=` | Top Hacker News stories (`limit` optional, defaults to 5), via the Hacker News Firebase API |
+| GET | `/api/news/telemundo/recent-news?limit=` | Recent Telemundo headlines (`limit` optional, defaults to 5), scraped from telemundo.com |
+
+Both return their respective typed models (`HackerNewsModel`, `TelemundoModel`).
 
 ## Configuration
 
-Secrets (Spotify client ID/secret, redirect URI, etc.) are injected via environment variables referenced in `application.properties` (e.g. `${SPOTIFYCLIENTID}`), not committed to the repo. `gradleBootRunWithEnv.sh` runs `./gradlew bootRun` with the required environment variables set.
+Secrets (Spotify client ID/secret, redirect URI, Google OAuth client JSON, etc.) are injected via environment variables referenced in `application.properties` (e.g. `${SPOTIFYCLIENTID}`), not committed to the repo. `gradleBootRunWithEnv.sh` runs `./gradlew bootRun` with the required environment variables set. The server listens on `127.0.0.1` (see `server.address` in `application.properties`).
 
 ## Running
 

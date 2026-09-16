@@ -16,3 +16,7 @@ echo "Running Gradle Boot Run:"
 
 wait
 echo "Gradle Boot Run Finished."
+echo ""
+echo ""
+echo ""
+

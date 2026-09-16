@@ -1,19 +1,24 @@
 package org.dashboardbackendreworked.service.GoogleCalendarServices;
 
 import java.util.List;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 
 import org.dashboardbackendreworked.models.GoogleCalendarModels.EventModel;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 
 import com.google.api.client.util.DateTime;
 import com.google.api.services.calendar.Calendar;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.services.calendar.model.Event;
+import com.google.api.services.calendar.model.EventDateTime;
 import com.google.api.services.calendar.model.Events;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
@@ -22,13 +27,77 @@ import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 public class GoogleCalendarService {
     private static final String APPLICATION_NAME = "Google Calendar API Java Quickstart";
 
-    public List<EventModel> getCalendarEvents(int maxEvents) throws Exception {
-        ObjectMapper mapper = new ObjectMapper();
-        List<EventModel> eventModelList = new ArrayList<EventModel>();
+    private EventModel createEventModel(Event event) {
+        EventDateTime startDate = event.getStart();
+        EventDateTime endDate = event.getEnd();
+
+        DateTime startDateTime = startDate.getDateTime();
+        DateTime endDateTime = endDate.getDateTime();
+        if (startDateTime == null) {
+            startDateTime = startDate.getDate();
+        }
+        if (endDateTime == null) {
+            endDateTime = endDate.getDate();
+        }
+
+        return EventModel.builder()
+             .id(event.getId())
+             .eventTitle(event.getSummary())
+             .location(event.getLocation())
+             .description(event.getDescription())
+             .eventType(event.getEventType())
+             .creatorEmail(event.getCreator().getEmail())
+             .startDate(this.getLocalDateTime(startDateTime))
+             .endDate(this.getLocalDateTime(endDateTime))
+            .build();
+    }
+
+    private OffsetDateTime getLocalDateTime(DateTime dateTime) {
+        Instant epochMiliValue = Instant.ofEpochMilli(dateTime.getValue());
+        if (dateTime.isDateOnly()) {
+            return epochMiliValue.atOffset(ZoneOffset.UTC);
+        }
+        return epochMiliValue.atOffset(ZoneOffset.ofTotalSeconds(dateTime.getTimeZoneShift() * 60));
+    }
+    private Calendar getCalendarService() throws Exception {
         final NetHttpTransport netHttpTransport = GoogleNetHttpTransport.newTrustedTransport();
+        return new Calendar.Builder(netHttpTransport, GoogleCalendarAuthService.JSON_FACTORY, GoogleCalendarAuthService.getCredentials(netHttpTransport)).setApplicationName(APPLICATION_NAME).build();
+    }
+
+    public List<EventModel> getDateEvents(LocalDate date) throws Exception {
+        List<EventModel> eventModelList = new ArrayList<EventModel>();
+        LocalDateTime localDateTime = LocalDateTime.of(date, LocalTime.MIN);
         
-        Calendar service = new Calendar.Builder(netHttpTransport, GoogleCalendarAuthService.JSON_FACTORY, GoogleCalendarAuthService.getCredentials(netHttpTransport)).setApplicationName(APPLICATION_NAME).build();
+        Instant instant = localDateTime.atZone(ZoneId.of("America/New_York")).toInstant();
+        DateTime selectedDate = new DateTime(instant.toEpochMilli());
+        DateTime selectedEndDate = new DateTime(instant.plusSeconds(60*60*24).toEpochMilli());
+        
+        Calendar calendarService = this.getCalendarService();
+        Events calendarEvents = calendarService.events()
+                             .list("primary")
+                             .setTimeMin(selectedDate)
+                             .setTimeMax(selectedEndDate)
+                             .setSingleEvents(true)
+                         .execute();
+
+        List<Event> events = calendarEvents.getItems();
+        if (events.isEmpty()) {
+             return Collections.emptyList(); 
+        }
+
+        for (Event event: events) {
+            EventModel eventModel = this.createEventModel(event);
+            eventModelList.add(eventModel);
+        }
+
+        return eventModelList;
+        
+    }
+    
+    public List<EventModel> getCalendarEvents(int maxEvents) throws Exception {
+        List<EventModel> eventModelList = new ArrayList<EventModel>();
         DateTime time = new DateTime(System.currentTimeMillis());
+        Calendar service = this.getCalendarService();
         Events calendarEvents = service.events()
             .list("primary")
             .setMaxResults(maxEvents)
@@ -40,26 +109,10 @@ public class GoogleCalendarService {
          if (events.isEmpty()) {
              return Collections.emptyList(); 
          }
+
          for (Event event : events) {
-             JsonNode eventJson = mapper.readTree(event.toString());
-
-             String id = eventJson.get("id").asText();
-             String eventTitle = eventJson.get("summary").asText();
-             LocalDate startDate = LocalDate.parse(eventJson.get("start").get("date").asText());
-             LocalDate endDate = LocalDate.parse(eventJson.get("end").get("date").asText());
-             String creatorEmail = eventJson.get("creator").get("email").asText();
-             String eventType = eventJson.get("eventType").asText();
-
-             EventModel eventModel = EventModel.builder()
-                 .id(id)
-                 .eventTitle(eventTitle)
-                 .eventType(eventType)
-                 .creatorEmail(creatorEmail)
-                 .startDate(startDate)
-                 .endDate(endDate)
-                .build();
-
-             eventModelList.add(eventModel);
+            EventModel eventModel = this.createEventModel(event);
+            eventModelList.add(eventModel);
          }
          return eventModelList;
 

@@ -1,6 +1,6 @@
 package org.dashboardbackendreworked.models.GoogleCalendarModels;
 
-import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,8 +15,10 @@ import lombok.Setter;
 @Builder
 public class EventModel {
     private String eventTitle;
-    private LocalDate startDate;
-    private LocalDate endDate;
+    private String location;
+    private String description;
+    private OffsetDateTime startDate;
+    private OffsetDateTime endDate;
     private String eventType;
     private String creatorEmail;
     private String id;
