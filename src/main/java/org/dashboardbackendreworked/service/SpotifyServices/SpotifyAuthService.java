@@ -79,7 +79,7 @@ public class SpotifyAuthService {
             this.spotifyCredentialsModel = this.spotifyCredentialStore.saveAccessInformation(authorizationCodeCredentials, null);
         }
         
-        if  (!this.spotifyCredentialsModel.isExpired()) {
+        if  (this.spotifyCredentialsModel.isExpired()) {
             AuthorizationCodeCredentials authorizationCodeCredentials = this.spotifyApi.authorizationCodeRefresh(
                 this.CLIENTID, this.CLIENTSECRET, this.spotifyCredentialsModel.getRefreshToken()
             ).build().execute();

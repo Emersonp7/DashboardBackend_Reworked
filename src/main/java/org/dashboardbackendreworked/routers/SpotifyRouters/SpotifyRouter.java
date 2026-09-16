@@ -1,13 +1,15 @@
-package org.dashboardbackendreworked.routers;
+package org.dashboardbackendreworked.routers.SpotifyRouters;
 
+import java.util.List;
+
+import org.dashboardbackendreworked.models.SpotifyModels.TrackModel;
 import org.dashboardbackendreworked.service.SpotifyServices.SpotifyAuthService;
 import org.dashboardbackendreworked.service.SpotifyServices.SpotifyService;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import se.michaelthelin.spotify.SpotifyApi;
 
 @RestController
 @RequestMapping("/api/spotify")
@@ -31,8 +33,22 @@ public class SpotifyRouter {
 
     @GetMapping("/callback")
     public String setSpotifyAPI(@RequestParam String code) throws Exception {
-        System.out.println("REDIRECT CODE: " + code);
         this.spotifyAuthService.setAuthentication(code);
         return "Spotify Authorized";
+    }
+
+    @PostMapping("/skip")
+    public void skipTrack() throws Exception {
+        spotifyService.skipToNextTrack();
+    }
+
+    @GetMapping("/current-track")
+    public TrackModel getCurrentTrack() throws Exception {
+        return this.spotifyService.getCurrentTrack();
+    }
+
+    @GetMapping("/queue")
+    public List<TrackModel> getQueue() throws Exception {
+        return this.spotifyService.getQueuedTracks();
     }
 }
