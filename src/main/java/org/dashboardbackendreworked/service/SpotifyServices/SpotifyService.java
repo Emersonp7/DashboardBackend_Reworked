@@ -142,7 +142,7 @@ public class SpotifyService {
         api.skipUsersPlaybackToPreviousTrack().build().execute();
     }
 
-    public void TogglePlayback() throws Exception, IOException, SpotifyWebApiException, ParseException {
+    public boolean TogglePlayback() throws Exception, IOException, SpotifyWebApiException, ParseException {
         SpotifyApi api = this.spotifyAuthService.getSpotifyApi();
         PauseUsersPlaybackRequest pauseRequest = api.pauseUsersPlayback().build();
         StartResumeUsersPlaybackRequest playRequest;
@@ -160,8 +160,10 @@ public class SpotifyService {
         CurrentlyPlaying currentTrack = api.getUsersCurrentlyPlayingTrack().build().execute();
         if (currentTrack != null && currentTrack.getIs_playing()) {
             pauseRequest.execute();
+            return false;
         } else {
            playRequest.execute();
+            return true;
         }
     }
 

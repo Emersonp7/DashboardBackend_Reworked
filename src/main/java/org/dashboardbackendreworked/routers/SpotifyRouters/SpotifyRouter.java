@@ -51,4 +51,10 @@ public class SpotifyRouter {
     public List<TrackModel> getQueue() throws Exception {
         return this.spotifyService.getQueuedTracks();
     }
+
+    @GetMapping("/toggle-playback")
+    public boolean changeTogglePlayback() throws Exception {
+        return this.spotifyService.TogglePlayback();
+    }
+
 }
