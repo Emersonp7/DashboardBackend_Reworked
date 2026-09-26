@@ -11,12 +11,17 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import java.util.stream.Stream;
+
+
 import org.dashboardbackendreworked.models.GoogleCalendarModels.EventModel;
 import org.springframework.stereotype.Service;
 
 
 import com.google.api.client.util.DateTime;
 import com.google.api.services.calendar.Calendar;
+import com.google.api.services.calendar.model.CalendarList;
+import com.google.api.services.calendar.model.CalendarListEntry;
 import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.EventDateTime;
 import com.google.api.services.calendar.model.Events;
@@ -28,6 +33,7 @@ public class GoogleCalendarService {
     private static final String APPLICATION_NAME = "Google Calendar API Java Quickstart";
 
     private EventModel createEventModel(Event event) {
+        String calendarType = "Misc.";
         EventDateTime startDate = event.getStart();
         EventDateTime endDate = event.getEnd();
 
@@ -40,15 +46,27 @@ public class GoogleCalendarService {
             endDateTime = endDate.getDate();
         }
 
+        String eventDisplayName = event.getCreator().getDisplayName();
+        if ( eventDisplayName == null && event.getCreator().getEmail().equals("emersonp935@gmail.com")) {
+            calendarType = "Primary";
+        } else if (eventDisplayName.equals("Holidays in United States")) {
+            calendarType = "Holidays";
+        } else if (eventDisplayName.contains("(Canvas)")) {
+            calendarType = "Canvas Assignments" ;
+        }
+
+
         return EventModel.builder()
-             .id(event.getId())
-             .eventTitle(event.getSummary())
-             .location(event.getLocation())
-             .description(event.getDescription())
-             .eventType(event.getEventType())
-             .creatorEmail(event.getCreator().getEmail())
-             .startDate(this.getLocalDateTime(startDateTime))
-             .endDate(this.getLocalDateTime(endDateTime))
+                .id(event.getId())
+                .eventTitle(event.getSummary())
+                .location(event.getLocation())
+                .description(event.getDescription())
+                .eventType(event.getEventType())
+                .calendarType(calendarType)
+                .creatorEmail(event.getCreator().getEmail())
+                .displayName(event.getCreator().getDisplayName())
+                .startDate(this.getLocalDateTime(startDateTime))
+                .endDate(this.getLocalDateTime(endDateTime))
             .build();
     }
 
@@ -95,27 +113,33 @@ public class GoogleCalendarService {
     }
     
     public List<EventModel> getCalendarEvents(int maxEvents) throws Exception {
-        List<EventModel> eventModelList = new ArrayList<EventModel>();
+        List<EventModel> eventModelList = new ArrayList<>();
+        List<String> calendarIds =  new ArrayList<>();
         DateTime time = new DateTime(System.currentTimeMillis());
         Calendar service = this.getCalendarService();
-        Events calendarEvents = service.events()
-            .list("primary")
-            .setMaxResults(maxEvents)
-            .setTimeMin(time)
-            .setOrderBy("startTime")
-            .setSingleEvents(true)
-            .execute();
-         List<Event> events = calendarEvents.getItems();
-         if (events.isEmpty()) {
-             return Collections.emptyList(); 
-         }
+        CalendarList calendarList = service.calendarList().list().execute();
+        List<Event> allCalendarEvents = new ArrayList<>();
 
-         for (Event event : events) {
+        for (CalendarListEntry entry:  calendarList.getItems()) {
+            calendarIds.add(entry.getId());
+        }
+
+        for (String id: calendarIds) {
+            Events calendarEvents = service.events()
+                .list(id)
+                .setMaxResults(maxEvents)
+                .setTimeMin(time)
+                .setOrderBy("startTime")
+                .setSingleEvents(true)
+                .execute();
+            calendarEvents.getItems().forEach(event -> allCalendarEvents.add(event));
+
+        }
+
+        for (Event event : allCalendarEvents) {
             EventModel eventModel = this.createEventModel(event);
             eventModelList.add(eventModel);
-         }
-         return eventModelList;
-
+        }
+        return eventModelList;
     }
-
 }

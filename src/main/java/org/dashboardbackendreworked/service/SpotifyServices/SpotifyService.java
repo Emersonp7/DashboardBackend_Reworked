@@ -32,7 +32,7 @@ public class SpotifyService {
 
     public SpotifyService(SpotifyAuthService authService) { this.spotifyAuthService = authService; }
 
-    private DeviceModel getActiveDevice() throws Exception, IOException, SpotifyWebApiException, ParseException {
+    public DeviceModel getActiveDevice() throws Exception, IOException, SpotifyWebApiException, ParseException {
         for (DeviceModel device: this.getAvailableDevices()) {
             if (device.getIsActive()) {
                 return device;
@@ -130,7 +130,6 @@ public class SpotifyService {
         }
 
         return this.createTrackModel(currentTrack.getItem());
-
     }
 
     public void skipToNextTrack() throws Exception, IOException, SpotifyWebApiException, ParseException {

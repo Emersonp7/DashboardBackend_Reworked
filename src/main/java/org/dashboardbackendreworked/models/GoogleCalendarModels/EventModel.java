@@ -19,7 +19,9 @@ public class EventModel {
     private String description;
     private OffsetDateTime startDate;
     private OffsetDateTime endDate;
+    private String calendarType;
     private String eventType;
+    private String displayName;
     private String creatorEmail;
     private String id;
 
