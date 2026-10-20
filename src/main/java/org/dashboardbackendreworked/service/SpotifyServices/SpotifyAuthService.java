@@ -34,9 +34,9 @@ public class SpotifyAuthService {
 
     public SpotifyAuthService (
             SpotifyCredentialStore spotifyCredentialStore,
-            @Value("${spotify.redirectURI}") String redirectURI,
             @Value("${spotify.clientID}") String clientId,
-            @Value("${spotify.clientSecret}") String clientSecret
+            @Value("${spotify.clientSecret}") String clientSecret,
+            @Value("${spotify.redirectURI}") String redirectURI
         ) throws Exception {
 
         this.spotifyCredentialStore = spotifyCredentialStore;

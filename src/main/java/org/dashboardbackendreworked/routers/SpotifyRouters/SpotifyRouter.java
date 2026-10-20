@@ -3,6 +3,7 @@ package org.dashboardbackendreworked.routers.SpotifyRouters;
 import java.util.List;
 
 import org.dashboardbackendreworked.models.SpotifyModels.DeviceModel;
+import org.dashboardbackendreworked.models.SpotifyModels.PlaybackStatusModel;
 import org.dashboardbackendreworked.models.SpotifyModels.TrackModel;
 import org.dashboardbackendreworked.service.SpotifyServices.SpotifyAuthService;
 import org.dashboardbackendreworked.service.SpotifyServices.SpotifyService;
@@ -43,7 +44,7 @@ public class SpotifyRouter {
         this.spotifyService.skipToNextTrack();
     }
 
-    @PostMapping
+    @PostMapping("/previous")
     public void prevTrack() throws Exception {
         this.spotifyService.skipToPrevTrack();
     }
@@ -59,7 +60,7 @@ public class SpotifyRouter {
     }
 
     @GetMapping("/toggle-playback")
-    public boolean changeTogglePlayback() throws Exception {
+    public PlaybackStatusModel changeTogglePlayback() throws Exception {
         return this.spotifyService.TogglePlayback();
     }
 

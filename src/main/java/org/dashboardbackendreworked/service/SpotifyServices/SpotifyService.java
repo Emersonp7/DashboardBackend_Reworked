@@ -1,14 +1,16 @@
 package org.dashboardbackendreworked.service.SpotifyServices;
 
-import java.io.IOException;
-import java.util.ArrayList;
+import java.io.IOException; import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.hc.core5.http.ParseException;
 import org.dashboardbackendreworked.models.SpotifyModels.DeviceModel;
+import org.dashboardbackendreworked.models.SpotifyModels.PlaybackStatusModel;
 import org.dashboardbackendreworked.models.SpotifyModels.ArtistsModel;
 import org.dashboardbackendreworked.models.SpotifyModels.TrackModel;
 import org.springframework.stereotype.Service;
+
+import com.google.gson.JsonArray;
 
 import se.michaelthelin.spotify.SpotifyApi;
 import se.michaelthelin.spotify.exceptions.SpotifyWebApiException;
@@ -24,6 +26,7 @@ import se.michaelthelin.spotify.requests.data.player.GetUsersAvailableDevicesReq
 import se.michaelthelin.spotify.requests.data.player.GetUsersCurrentlyPlayingTrackRequest;
 import se.michaelthelin.spotify.requests.data.player.PauseUsersPlaybackRequest;
 import se.michaelthelin.spotify.requests.data.player.StartResumeUsersPlaybackRequest;
+import se.michaelthelin.spotify.requests.data.player.TransferUsersPlaybackRequest;
 
 @Service
 public class SpotifyService {
@@ -141,29 +144,41 @@ public class SpotifyService {
         api.skipUsersPlaybackToPreviousTrack().build().execute();
     }
 
-    public boolean TogglePlayback() throws Exception, IOException, SpotifyWebApiException, ParseException {
+    public PlaybackStatusModel TogglePlayback() throws Exception, IOException, SpotifyWebApiException, ParseException {
         SpotifyApi api = this.spotifyAuthService.getSpotifyApi();
         PauseUsersPlaybackRequest pauseRequest = api.pauseUsersPlayback().build();
-        StartResumeUsersPlaybackRequest playRequest;
+        StartResumeUsersPlaybackRequest playRequest = api.startResumeUsersPlayback().build();
         DeviceModel activeDevice = this.getActiveDevice();
-        if (activeDevice.getDeviceName() == null) {
-            playRequest = api.startResumeUsersPlayback()
-                .device_id(
-                        this.getSpecificDeviceByName(DEFAULTDEVICENAME)
-                        .getDeviceId())
-                .build();
-        } else {
-            playRequest = api.startResumeUsersPlayback().build();
-        }
         
-        CurrentlyPlaying currentTrack = api.getUsersCurrentlyPlayingTrack().build().execute();
-        if (currentTrack != null && currentTrack.getIs_playing()) {
-            pauseRequest.execute();
-            return false;
-        } else {
-           playRequest.execute();
-            return true;
+        if (activeDevice == null) {
+            JsonArray deviceArray = new JsonArray();
+            deviceArray.add(this.getSpecificDeviceByName(DEFAULTDEVICENAME).getDeviceId());
+
+            TransferUsersPlaybackRequest transferRequest = api.transferUsersPlayback(deviceArray).play(true).build();
+            transferRequest.execute();
+            return PlaybackStatusModel.builder().PlaybackAction("Play").PlaybackStatus("Ok").build();
+        }
+
+        try {
+            CurrentlyPlaying currentTrack = api.getUsersCurrentlyPlayingTrack().build().execute();
+            if (currentTrack != null && currentTrack.getIs_playing()) {
+                pauseRequest.execute();
+                return PlaybackStatusModel.builder()
+                    .PlaybackAction("Pause")
+                    .PlaybackStatus("Ok")
+                .build();
+            } else {
+                playRequest.execute();
+                return PlaybackStatusModel.builder()
+                    .PlaybackAction("Play")
+                    .PlaybackStatus("Ok")
+                .build();
+            }
+        } catch (Exception e) {
+            return PlaybackStatusModel.builder()
+                .PlaybackAction("None")
+                .PlaybackStatus("Fail")
+            .build();
         }
     }
-
 }
