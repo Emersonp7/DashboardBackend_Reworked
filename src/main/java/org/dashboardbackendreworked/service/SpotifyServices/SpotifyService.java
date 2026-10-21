@@ -41,7 +41,7 @@ public class SpotifyService {
                 return device;
             }
         }
-        return DeviceModel.builder().build();
+        return null;
     }
 
     private DeviceModel getSpecificDeviceByName(String deviceName) throws Exception, IOException, SpotifyWebApiException, ParseException {
@@ -51,7 +51,7 @@ public class SpotifyService {
                 return device;
             }
         }
-        return DeviceModel.builder().build();
+        return null;
     }
 
     public List<DeviceModel> getAvailableDevices() throws Exception, IOException, SpotifyWebApiException, ParseException {
@@ -147,17 +147,20 @@ public class SpotifyService {
     public PlaybackStatusModel TogglePlayback() throws Exception, IOException, SpotifyWebApiException, ParseException {
         SpotifyApi api = this.spotifyAuthService.getSpotifyApi();
         PauseUsersPlaybackRequest pauseRequest = api.pauseUsersPlayback().build();
-        StartResumeUsersPlaybackRequest playRequest = api.startResumeUsersPlayback().build();
         DeviceModel activeDevice = this.getActiveDevice();
-        
         if (activeDevice == null) {
             JsonArray deviceArray = new JsonArray();
             deviceArray.add(this.getSpecificDeviceByName(DEFAULTDEVICENAME).getDeviceId());
-
+            
             TransferUsersPlaybackRequest transferRequest = api.transferUsersPlayback(deviceArray).play(true).build();
             transferRequest.execute();
             return PlaybackStatusModel.builder().PlaybackAction("Play").PlaybackStatus("Ok").build();
         }
+        
+        StartResumeUsersPlaybackRequest playRequest = api.startResumeUsersPlayback()
+            .device_id(
+                activeDevice.getDeviceId()
+            ).build();
 
         try {
             CurrentlyPlaying currentTrack = api.getUsersCurrentlyPlayingTrack().build().execute();

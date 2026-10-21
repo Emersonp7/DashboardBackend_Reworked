@@ -1,6 +1,7 @@
 package org.dashboardbackendreworked.routers.SpotifyRouters;
 
 import java.util.List;
+import java.util.Map;
 
 import org.dashboardbackendreworked.models.SpotifyModels.DeviceModel;
 import org.dashboardbackendreworked.models.SpotifyModels.PlaybackStatusModel;
@@ -25,8 +26,10 @@ public class SpotifyRouter {
     }
 
     @GetMapping("/health")
-    public String getServiceHealth() {
-        return "Health: Ok";
+    public Map<String, String> getServiceHealth() {
+        return Map.of(
+            "status", "ok", "service", "spotify"
+        );
     }
     @GetMapping("/authorize")
     public String authorize() {
