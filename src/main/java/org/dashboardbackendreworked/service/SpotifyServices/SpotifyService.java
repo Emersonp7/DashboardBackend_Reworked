@@ -44,6 +44,15 @@ public class SpotifyService {
         return null;
     }
 
+    private boolean inQueue(List<TrackModel> queue, String trackId) {
+        for (TrackModel track: queue) {
+            if (track.getTrackId().equals(trackId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private DeviceModel getSpecificDeviceByName(String deviceName) throws Exception, IOException, SpotifyWebApiException, ParseException {
         List<DeviceModel> devices = this.getAvailableDevices();
         for (DeviceModel device: devices) {
@@ -135,6 +144,24 @@ public class SpotifyService {
         return this.createTrackModel(currentTrack.getItem());
     }
 
+    public TrackModel SkipToSelectedTrack(String trackId) throws Exception, IOException, SpotifyWebApiException, ParseException {
+        List<TrackModel> queuedTracks = this.getQueuedTracks();
+
+        if (!inQueue(queuedTracks, trackId)) return null;
+        for (TrackModel track : queuedTracks) {
+            if (track.getTrackId().equals(trackId)) {
+                this.skipToNextTrack();
+                return track;
+            }
+
+            this.skipToNextTrack();
+        }
+
+        // Dead Code
+        return null;
+    }
+    
+
     public void skipToNextTrack() throws Exception, IOException, SpotifyWebApiException, ParseException {
         SpotifyApi api = this.spotifyAuthService.getSpotifyApi();
         api.skipUsersPlaybackToNextTrack().build().execute();
@@ -147,6 +174,7 @@ public class SpotifyService {
     public PlaybackStatusModel TogglePlayback() throws Exception, IOException, SpotifyWebApiException, ParseException {
         SpotifyApi api = this.spotifyAuthService.getSpotifyApi();
         PauseUsersPlaybackRequest pauseRequest = api.pauseUsersPlayback().build();
+        StartResumeUsersPlaybackRequest playRequest;
         DeviceModel activeDevice = this.getActiveDevice();
         if (activeDevice == null) {
             JsonArray deviceArray = new JsonArray();
@@ -154,13 +182,19 @@ public class SpotifyService {
             
             TransferUsersPlaybackRequest transferRequest = api.transferUsersPlayback(deviceArray).play(true).build();
             transferRequest.execute();
-            return PlaybackStatusModel.builder().PlaybackAction("Play").PlaybackStatus("Ok").build();
+            playRequest = api.startResumeUsersPlayback().build();
+            playRequest.execute();
+            return PlaybackStatusModel.builder()
+                    .PlaybackAction("Play")
+                    .PlaybackStatus("Ok")
+                .build();
         }
         
-        StartResumeUsersPlaybackRequest playRequest = api.startResumeUsersPlayback()
+        playRequest = api.startResumeUsersPlayback()
             .device_id(
                 activeDevice.getDeviceId()
             ).build();
+        
 
         try {
             CurrentlyPlaying currentTrack = api.getUsersCurrentlyPlayingTrack().build().execute();

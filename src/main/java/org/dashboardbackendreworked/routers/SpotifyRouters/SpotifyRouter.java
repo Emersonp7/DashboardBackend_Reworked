@@ -9,6 +9,7 @@ import org.dashboardbackendreworked.models.SpotifyModels.TrackModel;
 import org.dashboardbackendreworked.service.SpotifyServices.SpotifyAuthService;
 import org.dashboardbackendreworked.service.SpotifyServices.SpotifyService;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -24,6 +25,7 @@ public class SpotifyRouter {
         this.spotifyAuthService = authService;
         this.spotifyService = spotifyService;
     }
+
 
     @GetMapping("/health")
     public Map<String, String> getServiceHealth() {
@@ -45,6 +47,11 @@ public class SpotifyRouter {
     @PostMapping("/skip")
     public void skipTrack() throws Exception {
         this.spotifyService.skipToNextTrack();
+    }
+
+    @PostMapping("/skip/{trackId}")
+    public TrackModel SkipToTrack(@PathVariable String trackId) throws Exception {
+        return this.spotifyService.SkipToSelectedTrack(trackId);
     }
 
     @PostMapping("/previous")
