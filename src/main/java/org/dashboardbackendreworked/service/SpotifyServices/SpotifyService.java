@@ -1,6 +1,7 @@
 package org.dashboardbackendreworked.service.SpotifyServices;
 
-import java.io.IOException; import java.util.ArrayList;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.hc.core5.http.ParseException;
@@ -156,7 +157,6 @@ public class SpotifyService {
 
             this.skipToNextTrack();
         }
-
         // Dead Code
         return null;
     }
