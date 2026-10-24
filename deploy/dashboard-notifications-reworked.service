@@ -1,0 +1,42 @@
+# Phone-notification API (FastAPI) on 127.0.0.1:8001.
+#
+# Its own process on its own port, deliberately NOT part of the Spring backend:
+# the ANCS bridge POSTs into it as root, its store is in-memory and must
+# survive a Java restart independently, and dismissal needs DELETE -- which
+# CorsConfig.java does not allow.
+#
+# The store is in-memory, so: exactly one worker, and never --reload. A second
+# worker would hold a second store with a second boot_id, and the bridge would
+# ping-pong its replay between them.
+#
+# Not :8000 -- the legacy dashboard-backend.service still exists (inactive) and
+# would bind that port while serving a *different* /notifications store with a
+# different boot_id. Conflicts= below makes that impossible rather than merely
+# unlikely.
+#
+# Install:
+#   cd /home/perez/DashboardBackend_Reworked/src/main/python
+#   python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+#   sudo cp deploy/dashboard-notifications-reworked.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now dashboard-notifications-reworked
+
+[Unit]
+Description=Dashboard Notifications API ( REWORKED )
+After=network.target
+# The legacy FastAPI backend served /notifications too, on :8000.
+Conflicts=dashboard-backend.service
+
+[Service]
+Type=simple
+User=perez
+WorkingDirectory=/home/perez/DashboardBackend_Reworked/src/main/python
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/perez/DashboardBackend_Reworked/src/main/python/.venv/bin/uvicorn \
+          dashboard_notifications.app:app \
+          --host 127.0.0.1 --port 8001 --workers 1 --no-access-log
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

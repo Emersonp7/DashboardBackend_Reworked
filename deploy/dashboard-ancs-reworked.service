@@ -1,0 +1,53 @@
+# iPhone notification bridge (ANCS over BLE).
+#
+# Needs root to register a BLE advertisement and a pairing agent with BlueZ,
+# and to run `hciconfig noscan`.
+#
+# Uses /usr/bin/python3, NOT the API's venv: dbus-python and PyGObject are the
+# distro packages python3-dbus / python3-gi, which are not realistically
+# pip-installable on a Pi. The bridge is stdlib-only for exactly this reason --
+# do not add a pip dependency to it.
+#
+# ONLY ONE PROCESS may hold the ANCS advertisement and the default pairing
+# agent. For the first cutover, stop the old bridge explicitly and confirm it
+# is gone before starting this one -- do not lean on Conflicts=, because the
+# old unit is still `enabled` and a reboot would bring it back to fight:
+#
+#   sudo systemctl disable --now dashboard-ancs
+#   systemctl show dashboard-ancs -p MainPID        # must print MainPID=0
+#   sudo systemctl enable --now dashboard-ancs-reworked
+#
+# The bond lives in BlueZ (/var/lib/bluetooth), not in the bridge, so the phone
+# does not need to re-pair across the swap.
+#
+# Rollback:
+#   sudo systemctl disable --now dashboard-ancs-reworked
+#   sudo systemctl enable --now dashboard-ancs
+# The original /home/perez/DashboardAPI/tools/ancs_bridge.py is left untouched.
+#
+# Install:
+#   sudo cp deploy/dashboard-ancs-reworked.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+
+[Unit]
+Description=iPhone notification bridge (ANCS over BLE) ( REWORKED )
+After=bluetooth.service dashboard-notifications-reworked.service
+# Wants, not Requires: the bridge is designed to outlive a dead API (every post
+# failure is swallowed so the dashboard can never take the BLE link with it),
+# and boot_id detection repairs the store when the API comes back. Hard-ordering
+# them would let an API crash drop the Bluetooth link.
+Wants=bluetooth.service dashboard-notifications-reworked.service
+# Same radio, same advertisement, same agent.
+Conflicts=dashboard-ancs.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/perez/DashboardBackend_Reworked/src/main/python
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -m ancs_bridge --api http://127.0.0.1:8001/api
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+# Pinned to the set already proven on this Pi (lifted from the previous
+# DashboardAPI), so the wheels are known to exist for armv8 / cp311.
+#
+# Direct pins only -- pip resolves anyio, h11, click, typing-extensions and
+# annotated-types. Deliberately NOT uvicorn[standard]: no websockets, no
+# reload, and uvloop/httptools buy nothing for a localhost dict lookup.
+fastapi==0.124.4
+starlette==0.44.0
+uvicorn==0.33.0
+pydantic==2.10.6
+pydantic-core==2.27.2
