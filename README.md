@@ -19,7 +19,7 @@ src/main/java/org/dashboardbackendreworked/
 ├── configs/
 │   └── CorsConfig.java       # CORS setup for the frontend dev server
 ├── models/                   # Data models (POJOs), grouped per integration
-│   ├── SpotifyModels/         # TrackModel, ArtistsModel, DeviceModel, SpotifyCredentialsModel
+│   ├── SpotifyModels/         # TrackModel, ArtistsModel, DeviceModel, PlaybackStatusModel, SpotifyCredentialsModel
 │   ├── GoogleCalendarModels/  # EventModel
 │   └── NewsModels/            # HackerNewsModel, HackerNewsItem, TelemundoModel
 ├── service/                  # Business logic layer, one (sub)package per integration
@@ -45,22 +45,28 @@ All three integrations are wired to HTTP endpoints via Spring `@RestController` 
 **Spotify** — `/api/spotify` (`SpotifyRouter`)
 | Method | Path | Description |
 | --- | --- | --- |
-| GET | `/health` | Liveness check |
+| GET | `/health` | Liveness check, returns `{"status": "ok", "service": "spotify"}` |
 | GET | `/authorize` | Returns the Spotify OAuth authorization URL |
 | GET | `/callback?code=` | Exchanges an auth code for tokens and persists them |
 | POST | `/skip` | Skips to the next track |
-| GET | `/current-track` | Returns the currently playing `TrackModel` |
+| POST | `/skip/{trackId}` | Skips forward through the queue to the given track and returns its `TrackModel` (empty response if the track isn't queued) |
+| POST | `/previous` | Skips to the previous track |
+| GET | `/current-track` | Returns the currently playing `TrackModel` (empty model if nothing is playing) |
 | GET | `/queue` | Returns the upcoming queue as `List<TrackModel>` |
+| GET | `/toggle-playback` | Plays or pauses playback and returns a `PlaybackStatusModel` |
+| GET | `/active-device` | Returns the active `DeviceModel` (empty response if no device is active) |
+
+`/toggle-playback` reports the action taken (`Play`, `Pause`, or `None`) and its status (`Ok` or `Fail`). If no device is active, playback is transferred to the default device (`DEFAULTDEVICENAME` in `SpotifyService`) and started there.
 
 Auth uses the OAuth2 authorization code flow (with refresh); credentials are cached to disk (`src/main/resources/Credentials/cached.json`) via `SpotifyCredentialStore` and refreshed automatically when expired.
 
 **Google Calendar** — `/api/google` (`GoogleCalendarRouter`)
 | Method | Path | Description |
 | --- | --- | --- |
-| GET | `/events?limit=` | Upcoming events from the primary calendar (`limit` optional, defaults to 10) |
-| GET | `/events/{date}` | Events on a specific `YYYY-MM-DD` date |
+| GET | `/events?limit=` | Upcoming events from all of the user's calendars (`limit` optional, defaults to 10, applied per calendar) |
+| GET | `/events/{date}` | Events on a specific `YYYY-MM-DD` date, from the primary calendar only |
 
-Both return `List<EventModel>`. Auth uses Google's installed-app OAuth flow (`GoogleCalendarAuthService`), with tokens stored under `tokens/`.
+Both return `List<EventModel>`, where `calendarType` labels each event's source (`Primary`, `Holidays`, `Canvas Assignments`, or `Misc.`). Auth uses Google's installed-app OAuth flow (`GoogleCalendarAuthService`), with the local callback receiver on port `8081` and tokens stored under `tokens/`.
 
 **News** — `/api/news/...`
 | Method | Path | Description |
@@ -72,10 +78,10 @@ Both return their respective typed models (`HackerNewsModel`, `TelemundoModel`).
 
 ## Configuration
 
-Secrets (Spotify client ID/secret, redirect URI, Google OAuth client JSON, etc.) are injected via environment variables referenced in `application.properties` (e.g. `${SPOTIFYCLIENTID}`), not committed to the repo. `gradleBootRunWithEnv.sh` runs `./gradlew bootRun` with the required environment variables set. The server listens on `127.0.0.1` (see `server.address` in `application.properties`).
+Spotify secrets (`SPOTIFYCLIENTID`, `SPOTIFYCLIENTSECRET`, `REDIRECTURI`) are injected via environment variables referenced in `application.properties`, not committed to the repo. `gradleBootRunWithEnv.sh` loads them from a local `.env` file and runs `./gradlew bootRun`. The Google OAuth client JSON is read from the classpath at `src/main/resources/Credentials/googleCredentials.json`. The server listens on `127.0.0.1` (see `server.address` in `application.properties`).
 
 ## Running
 
 ```
-./gradlew bootRun
+./gradleBootRunWithEnv.sh
 ```
