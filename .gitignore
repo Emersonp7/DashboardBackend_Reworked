@@ -4,6 +4,9 @@ build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
+tokens/
+scratchpad/
+src/main/resources/**
 
 ### STS ###
 .apt_generated
@@ -35,5 +38,6 @@ out/
 
 ### VS Code ###
 .vscode/
+.vim
 
 .env
