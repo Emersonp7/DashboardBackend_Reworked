@@ -11,9 +11,6 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 
-import java.util.stream.Stream;
-
-
 import org.dashboardbackendreworked.models.GoogleCalendarModels.EventModel;
 import org.springframework.stereotype.Service;
 
@@ -47,7 +44,7 @@ public class GoogleCalendarService {
         }
 
         String eventDisplayName = event.getCreator().getDisplayName();
-        if ( eventDisplayName == null && event.getCreator().getEmail().equals("emersonp935@gmail.com")) {
+        if ( eventDisplayName == null && event.getCreator().getEmail() != null) {
             calendarType = "Primary";
         } else if (eventDisplayName.equals("Holidays in United States")) {
             calendarType = "Holidays";
