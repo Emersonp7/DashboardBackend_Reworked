@@ -3,8 +3,10 @@ package org.dashboardbackendreworked.service.LocationServices;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Random;
+import java.util.Map;
+import java.util.Objects;
 
 import org.dashboardbackendreworked.models.LocationModels.LocationModel;
 import org.springframework.beans.factory.annotation.Value;
@@ -71,52 +73,58 @@ public class LocationService {
         this.mapper.writeValue(this.locationHistoryPath.toFile(), locationHistorylList);
     }
 
-//    public LocationLink getProbablePath(LocationModel location) throws Exception {
-    public LocationLink getProbablePath() throws Exception {
-        
-        List<LocationLink> LocationPaths = new ArrayList<LocationLink>();
+    public LocationLink getProbablePath(LocationModel start) throws Exception {
         List<LocationModel> locationHist = this.getLocationHistory();
+        if (start == null || locationHist == null || locationHist.size() < 2) return null;
 
-        LocationModel location = locationHist.get(new Random().nextInt(0, locationHist.size()));
+        String startAddress = start.getAddress();
+        List<LocationLink> locationPaths = new ArrayList<>();
 
-        
-        // Stop when Same location appears twice or more time in a row.
-        // Ex: Location1.address == Location2.address and Location1.timestamp + 5 minutes == Location2.timestamp
-        // When stopped, if another Location1 appears again further down the list, follow same pattern.
-        // In list? [LocationLink1, LocationLink2, LocationLink3] Where LocationLink1, LocationLink2, LocationLink3 all start with the same Location
+        int i = 0;
+        while (i < locationHist.size()) {
+            if (!this.sameAddress(locationHist.get(i), startAddress)) { i++; continue; }
+            while (i + 1 < locationHist.size() && this.sameAddress(locationHist.get(i + 1), startAddress)) i++;
 
-        int left = 0;
-        int right = 1;
-        LocationLink locationLink = new LocationLink(null);
-        LocationLink head = locationLink;
-        while (left < right && Math.max(left, right) < locationHist.size()) {
-
-            if (locationHist.get(left).getAddress().equals(location.getAddress())) {
-                if ( left < right && locationHist.get(left+1).getAddress().equals(location.getAddress())) {
-                    left++;
-                }
-                locationLink = new LocationLink(locationHist.get(left));
-                head = locationLink;
+            LocationLink head = new LocationLink(locationHist.get(i));
+            LocationLink tail = head;
+            boolean arrived = false;
+            int j = i + 1;
+            while (j < locationHist.size() && !arrived) {
+                LocationModel current = locationHist.get(j);
+                tail.nextLocation = new LocationLink(current);
+                tail = tail.nextLocation;
+                arrived = j + 1 < locationHist.size()
+                       && this.sameAddress(locationHist.get(j + 1), current.getAddress());
+                j++;
             }
 
-            if (locationHist.get(right).getAddress().equals(locationHist.get(right-1).getAddress())) {
-                LocationPaths.add(locationLink);
-                locationLink = new LocationLink(null);
-                head = locationLink;
-                left = right;
+            if (arrived && head.nextLocation != null) locationPaths.add(head);
+            i = j;
+        }
+
+        return this.getMostCommonPath(locationPaths);
+    }
+
+    private boolean sameAddress(LocationModel location, String address) {
+        return location != null && Objects.equals(location.getAddress(), address);
+    }
+
+    private LocationLink getMostCommonPath(List<LocationLink> paths) {
+        Map<String, Integer> pathCounts = new HashMap<>();
+        Map<String, LocationLink> firstSeenPath = new HashMap<>();
+        String bestKey = null;
+
+        for (LocationLink path : paths) {
+            StringBuilder key = new StringBuilder();
+            for (LocationLink link = path; link != null; link = link.nextLocation) {
+                key.append(link.location.getAddress()).append("->");
             }
-
-            head.nextLocation = new LocationLink(locationHist.get(right));
-            head = head.nextLocation;
-
-            right++;
-            left++;
+            String pathKey = key.toString();
+            pathCounts.merge(pathKey, 1, Integer::sum);
+            firstSeenPath.putIfAbsent(pathKey, path);
+            if (bestKey == null || pathCounts.get(pathKey) > pathCounts.get(bestKey)) bestKey = pathKey;
         }
 
-        for (LocationLink locLink: LocationPaths) {
-            System.out.println(locLink);
-        }
-
-        return null;
+        return bestKey == null ? null : firstSeenPath.get(bestKey);
     }
 }

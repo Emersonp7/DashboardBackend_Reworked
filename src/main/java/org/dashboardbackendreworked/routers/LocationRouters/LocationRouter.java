@@ -6,7 +6,6 @@ import java.util.Map;
 import org.dashboardbackendreworked.models.LocationModels.LocationModel;
 import org.dashboardbackendreworked.service.LocationServices.LocationService;
 import org.dashboardbackendreworked.service.LocationServices.LocationService.LocationLink;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,11 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/location")
-public class LocationRouter implements CommandLineRunner {
-    @Override
-    public void run(String... args) throws Exception {
-        this.locationService.getProbablePath();
-    }
+public class LocationRouter {
     final private LocationService locationService;
     public LocationRouter(LocationService locationService) {
         this.locationService = locationService;
@@ -49,6 +44,6 @@ public class LocationRouter implements CommandLineRunner {
     
     @PostMapping("/get-path")
     public LocationLink getFinalLocationPath(@RequestBody LocationModel locationModel) throws Exception {
-        return this.locationService.getProbablePath();
+        return this.locationService.getProbablePath(locationModel);
     }
 }
