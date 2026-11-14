@@ -50,8 +50,7 @@ public class GoogleCalendarService {
             calendarType = "Holidays";
         } else if (eventDisplayName.contains("(Canvas)")) {
             calendarType = "Canvas Assignments" ;
-        }
-
+        } 
 
         return EventModel.builder()
                 .id(event.getId())
@@ -61,7 +60,7 @@ public class GoogleCalendarService {
                 .eventType(event.getEventType())
                 .calendarType(calendarType)
                 .creatorEmail(event.getCreator().getEmail())
-                .displayName(event.getCreator().getDisplayName())
+                .displayName(eventDisplayName)
                 .startDate(this.getLocalDateTime(startDateTime))
                 .endDate(this.getLocalDateTime(endDateTime))
             .build();
